@@ -30,17 +30,17 @@ def fetch_transcript(video_id: str) -> dict:
     Returns dict with 'success', 'transcript' or 'error' keys.
     """
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        api = YouTubeTranscriptApi()
 
-        # Try to get manually created transcript first, then auto-generated
-        transcript = None
-        for t in transcript_list:
-            if not t.is_generated:
-                transcript = t.fetch()
-                break
+        # Try to fetch with multiple language preferences
+        languages = ['en', 'en-US', 'en-GB', 'fr', 'es', 'de']
+        fetched = api.fetch(video_id, languages=languages)
 
-        if transcript is None:
-            transcript = transcript_list.find_generated_transcript(['en', 'fr', 'es', 'de']).fetch()
+        # Convert to list of dicts format
+        transcript = [
+            {'start': snippet.start, 'duration': snippet.duration, 'text': snippet.text}
+            for snippet in fetched
+        ]
 
         return {
             'success': True,
