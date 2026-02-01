@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Gaming Clip Detector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .input-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        button {
+            padding: 15px 35px;
+            background: linear-gradient(90deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(255, 50, 50, 0.2);
+            border: 1px solid #ff5050;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .video-link {
+            color: #00d4ff;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .video-link:hover {
+            text-decoration: underline;
+        }
+
+        .clip-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00d4ff;
+            transition: transform 0.2s;
+        }
+
+        .clip-card:hover {
+            transform: translateX(5px);
+        }
+
+        .clip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .clip-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .clip-score {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .score-high { color: #00ff88; }
+        .score-medium { color: #ffcc00; }
+        .score-low { color: #ff6b6b; }
+
+        .clip-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .category-hype { background: #00ff88; color: #000; }
+        .category-rage { background: #ff4444; color: #fff; }
+        .category-funny { background: #ffcc00; color: #000; }
+        .category-clutch { background: #9933ff; color: #fff; }
+        .category-fail { background: #ff6b6b; color: #fff; }
+        .category-reaction { background: #00d4ff; color: #000; }
+        .category-skill { background: #ff00ff; color: #fff; }
+
+        .clip-reason {
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        .timestamp-link {
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .timestamp-link:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .clip-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YouTube Gaming Clip Detector</h1>
+            <p class="subtitle">AI-powered analysis to find the best moments in gaming videos</p>
+        </header>
+
+        <div class="input-section">
+            <div class="input-group">
+                <input type="text" id="urlInput" placeholder="Paste YouTube URL here..." />
+                <button id="analyzeBtn" onclick="analyzeVideo()">Analyze</button>
+            </div>
+        </div>
+
+        <div class="error" id="error">
+            <strong>Error:</strong> <span id="errorText"></span>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing video transcript with Claude AI...</p>
+            <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">This may take 10-30 seconds</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2>Suggested Clips</h2>
+                <a href="#" id="videoLink" class="video-link" target="_blank">Open video</a>
+            </div>
+            <div id="clipsList"></div>
+        </div>
+
+        <footer>
+            Powered by Claude AI | Transcripts via YouTube
+        </footer>
+    </div>
+
+    <script>
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function getScoreClass(score) {
+            if (score >= 8) return 'score-high';
+            if (score >= 5) return 'score-medium';
+            return 'score-low';
+        }
+
+        function getYoutubeTimestampUrl(videoId, seconds) {
+            return `https://www.youtube.com/watch?v=${videoId}&t=${seconds}s`;
+        }
+
+        async function analyzeVideo() {
+            const urlInput = document.getElementById('urlInput');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+
+            const url = urlInput.value.trim();
+            if (!url) {
+                showError('Please enter a YouTube URL');
+                return;
+            }
+
+            // Reset UI
+            error.classList.remove('active');
+            results.classList.remove('active');
+            loading.classList.add('active');
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError(data.error || 'Unknown error occurred');
+                    return;
+                }
+
+                displayResults(data);
+
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            } finally {
+                loading.classList.remove('active');
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            error.classList.add('active');
+        }
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            const clipsList = document.getElementById('clipsList');
+            const videoLink = document.getElementById('videoLink');
+
+            videoLink.href = data.video_url;
+
+            clipsList.innerHTML = data.clips.map((clip, index) => `
+                <div class="clip-card">
+                    <div class="clip-header">
+                        <div class="clip-title">${clip.suggested_title}</div>
+                        <div class="clip-score ${getScoreClass(clip.score)}">
+                            ${clip.score}/10
+                        </div>
+                    </div>
+                    <div class="clip-meta">
+                        <div class="meta-item">
+                            <span class="category-badge category-${clip.category}">${clip.category}</span>
+                        </div>
+                        <div class="meta-item">
+                            <a href="${getYoutubeTimestampUrl(data.video_id, clip.start_time)}"
+                               class="timestamp-link" target="_blank">
+                                ${formatTime(clip.start_time)} - ${formatTime(clip.end_time)}
+                            </a>
+                        </div>
+                        <div class="meta-item">
+                            Duration: ${clip.end_time - clip.start_time}s
+                        </div>
+                    </div>
+                    <p class="clip-reason">${clip.reason}</p>
+                </div>
+            `).join('');
+
+            results.classList.add('active');
+        }
+
+        // Allow Enter key to trigger analysis
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeVideo();
+            }
+        });
+    </script>
+</body>
+</html>
