@@ -68,10 +68,16 @@ def format_transcript_for_analysis(transcript: list) -> str:
     return "\n".join(formatted_lines)
 
 
-def analyze_with_claude(transcript: list, api_key: str) -> dict:
+def analyze_with_claude(transcript: list, api_key: str, clip_count: int = 5, styles: list = None) -> dict:
     """
     Send transcript to Claude for gaming moment analysis.
     Returns dict with 'success' and 'clips' or 'error'.
+
+    Args:
+        transcript: List of transcript entries
+        api_key: Anthropic API key
+        clip_count: Number of clips to return (1-10)
+        styles: List of styles to filter by (e.g., ['rage', 'funny'])
     """
     client = anthropic.Anthropic(api_key=api_key)
 
@@ -82,6 +88,15 @@ def analyze_with_claude(transcript: list, api_key: str) -> dict:
         video_duration = transcript[-1]['start'] + transcript[-1].get('duration', 5)
     else:
         video_duration = 0
+
+    # Ensure clip_count is within bounds
+    clip_count = max(1, min(10, clip_count))
+
+    # Build style filter instruction
+    style_instruction = ""
+    if styles and len(styles) > 0:
+        style_list = ', '.join(styles)
+        style_instruction = f"\n\nIMPORTANT: Focus ONLY on these categories: {style_list}. Ignore moments that don't fit these styles."
 
     system_prompt = """You are an expert gaming content analyst specializing in identifying viral-worthy clip moments from gaming streams and videos.
 
@@ -114,7 +129,7 @@ SCORING CRITERIA (1-10):
 
 OUTPUT FORMAT: Return ONLY valid JSON array, no markdown formatting, no code blocks."""
 
-    user_prompt = f"""Analyze this gaming video transcript and identify the TOP 5-8 best moments to clip.
+    user_prompt = f"""Analyze this gaming video transcript and identify the TOP {clip_count} best moments to clip.{style_instruction}
 
 VIDEO DURATION: {int(video_duration)} seconds
 
@@ -129,7 +144,7 @@ For each moment, provide:
 - reason: brief explanation why this moment is clipworthy (1-2 sentences)
 - suggested_title: catchy, short title for the clip (gaming/meme style)
 
-Return a JSON array of objects sorted by score (highest first). Include 5-8 moments.
+Return a JSON array of objects sorted by score (highest first). Include exactly {clip_count} moments.
 
 Example format:
 [
@@ -139,7 +154,7 @@ Example format:
     "score": 9,
     "category": "hype",
     "reason": "Intense reaction to winning with extreme hype and celebration",
-    "suggested_title": "THE CRAZIEST CLUTCH EVER 🔥"
+    "suggested_title": "THE CRAZIEST CLUTCH EVER"
   }}
 ]
 
@@ -179,7 +194,7 @@ Return ONLY the JSON array, nothing else."""
 
         return {
             'success': True,
-            'clips': validated_clips[:8],
+            'clips': validated_clips[:clip_count],
             'video_duration': int(video_duration)
         }
 
@@ -191,10 +206,16 @@ Return ONLY the JSON array, nothing else."""
         return {'success': False, 'error': f'Analysis error: {str(e)}'}
 
 
-def analyze_video(url: str, api_key: str) -> dict:
+def analyze_video(url: str, api_key: str, clip_count: int = 5, styles: list = None) -> dict:
     """
     Main function: analyze a YouTube video for clipworthy moments.
     Returns full analysis result.
+
+    Args:
+        url: YouTube video URL
+        api_key: Anthropic API key
+        clip_count: Number of clips to return (1-10)
+        styles: List of styles to filter by
     """
     # Extract video ID
     video_id = extract_video_id(url)
@@ -207,7 +228,12 @@ def analyze_video(url: str, api_key: str) -> dict:
         return transcript_result
 
     # Analyze with Claude
-    analysis_result = analyze_with_claude(transcript_result['transcript'], api_key)
+    analysis_result = analyze_with_claude(
+        transcript_result['transcript'],
+        api_key,
+        clip_count=clip_count,
+        styles=styles
+    )
 
     if analysis_result['success']:
         analysis_result['video_id'] = video_id
